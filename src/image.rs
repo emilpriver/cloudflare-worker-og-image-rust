@@ -1,4 +1,5 @@
 use resvg::render;
+use worker::*;
 use std::io::BufRead;
 use std::sync::Arc;
 use std::{error::Error, ops::Deref, time::Instant};
@@ -6,8 +7,8 @@ use std::{fs, io};
 use tiny_skia::{Pixmap, Transform};
 use usvg::{ImageHrefResolver, ImageKind, Options, Tree};
 
-const WIDTH: u32 = 1200;
-const HEIGHT: u32 = 630;
+const WIDTH: usize =  1200;
+const HEIGHT: usize = 630;
 
 struct Tracer {
     start: Instant,
@@ -36,16 +37,13 @@ impl Tracer {
     }
 }
 
-fn main() -> Result<(), Box<dyn Error>> {
+pub fn og_image(ctx: RouteContext<()>) -> Result<(), Box<dyn Error>> {
     // Read in the svg template we have
     let template = liquid::ParserBuilder::with_stdlib()
         .build()
         .unwrap()
         .parse(include_str!("../assets/demo-text-with-image.svg"))
         .unwrap();
-
-    print!("Enter text: ");
-    io::Write::flush(&mut io::stdout()).unwrap();
 
     let stdin = io::stdin();
     let text = stdin.lock().lines().next().unwrap().unwrap();
@@ -85,8 +83,6 @@ fn main() -> Result<(), Box<dyn Error>> {
         .fontdb
         .load_font_data(include_bytes!("../assets/Inter.ttf").to_vec());
 
-    tracer.log("loading fonts");
-
     let globals = liquid::object!({ "text": text });
 
     let svg = template.render(&globals).unwrap();
@@ -96,7 +92,6 @@ fn main() -> Result<(), Box<dyn Error>> {
     // Build our string into a svg tree
     let tree = Tree::from_str(&svg, &options.to_ref())?;
 
-    // Render our tree to the pixmap buffer, using default fit and transformation settings
     render(
         &tree,
         usvg::FitTo::Original,
@@ -111,13 +106,18 @@ fn main() -> Result<(), Box<dyn Error>> {
         webp::Encoder::new(pixmap.data(), webp::PixelLayout::Rgba, WIDTH, HEIGHT).encode_lossless();
     let result = encoded_buffer.deref();
 
-    tracer.log("encoding");
+ let mut new_image =
+                        Vec::with_capacity(WIDTH * HEIGHT);
 
-    // Write the result
-    fs::write("image.webp", result)?;
-    println!("Wrote out image.webp");
+                    image
+                        .write_to(&mut Cursor::new(&mut new_image), image_transform_format)
+                        .expect("Error writing image");
 
-    tracer.log("writing");
+                    let mut headers = worker::Headers::new();
+                    let _ = headers.set("Access-Control-Allow-Headers", "Content-Type");
+                    let _ = headers.set("Content-Type", &image_transform_format_header);
+                    let _ = headers.set("Cache-Control", "max-age=2629746");
 
-    Ok(())
+
+    Ok(result)
 }
