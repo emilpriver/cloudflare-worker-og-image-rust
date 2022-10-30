@@ -30,11 +30,8 @@ pub async fn main(req: Request, env: Env, _ctx: worker::Context) -> Result<Respo
     // Environment bindings like KV Stores, Durable Objects, Secrets, and Variables.
     router
         .get("/worker-version", |_, ctx| {
-            let version = ctx.var("WORKERS_RS_VERSION")?.to_string();
-            
             let image = image::og_image(ctx);
-
-            Response::ok(version)
+            Response::ok(image)
         })
         .run(req, env)
         .await

@@ -1,14 +1,15 @@
 use resvg::render;
-use worker::*;
+use std::io;
 use std::io::BufRead;
+use std::io::Cursor;
 use std::sync::Arc;
-use std::{error::Error, ops::Deref, time::Instant};
-use std::{fs, io};
+use std::time::Instant;
 use tiny_skia::{Pixmap, Transform};
 use usvg::{ImageHrefResolver, ImageKind, Options, Tree};
+use worker::*;
 
-const WIDTH: usize =  1200;
-const HEIGHT: usize = 630;
+const WIDTH: u32 = 1200;
+const HEIGHT: u32 = 630;
 
 struct Tracer {
     start: Instant,
@@ -37,7 +38,7 @@ impl Tracer {
     }
 }
 
-pub fn og_image(ctx: RouteContext<()>) -> Result<(), Box<dyn Error>> {
+pub async fn og_image(ctx: RouteContext<()>) -> Result<Response> {
     // Read in the svg template we have
     let template = liquid::ParserBuilder::with_stdlib()
         .build()
@@ -54,10 +55,12 @@ pub fn og_image(ctx: RouteContext<()>) -> Result<(), Box<dyn Error>> {
     let mut pixmap = Pixmap::new(WIDTH, HEIGHT).ok_or("Pixmap allocation error")?;
 
     // Use default settings
+    let client = reqwest::Client::new();
+    
     let mut options = Options {
         image_href_resolver: ImageHrefResolver {
-            resolve_string: Box::new(move |path: &str, _| {
-                let response = reqwest::blocking::get(path).ok()?;
+            resolve_string: Box::new(move |path: &str, _| async move {
+                let response = client.get(path).send().await.unwrap();
                 let content_type = response
                     .headers()
                     .get("content-type")
@@ -79,18 +82,15 @@ pub fn og_image(ctx: RouteContext<()>) -> Result<(), Box<dyn Error>> {
         ..Default::default()
     };
 
-    options
-        .fontdb
-        .load_font_data(include_bytes!("../assets/Inter.ttf").to_vec());
-
     let globals = liquid::object!({ "text": text });
 
     let svg = template.render(&globals).unwrap();
 
-    tracer.log("rendering");
-
     // Build our string into a svg tree
-    let tree = Tree::from_str(&svg, &options.to_ref())?;
+    let tree = match Tree::from_str(&svg, &options.to_ref()) {
+        Ok(t) => t,
+        Err(e) => return Ok(Response::error("Error creating tree", 400).unwrap()),
+    };
 
     render(
         &tree,
@@ -101,23 +101,24 @@ pub fn og_image(ctx: RouteContext<()>) -> Result<(), Box<dyn Error>> {
 
     tracer.log("rendering");
 
-    // Encode our pixmap buffer into a webp image
-    let encoded_buffer =
-        webp::Encoder::new(pixmap.data(), webp::PixelLayout::Rgba, WIDTH, HEIGHT).encode_lossless();
-    let result = encoded_buffer.deref();
+    let mut new_image = Vec::with_capacity(WIDTH as usize * HEIGHT as usize);
 
- let mut new_image =
-                        Vec::with_capacity(WIDTH * HEIGHT);
+    let image = match image::load_from_memory(&pixmap.data()) {
+        Ok(value) => value,
+        _ => return Ok(Response::error("Error loading image from memory", 400).unwrap()),
+    };
 
-                    image
-                        .write_to(&mut Cursor::new(&mut new_image), image_transform_format)
-                        .expect("Error writing image");
+    image
+        .write_to(&mut Cursor::new(&mut new_image), image::ImageFormat::Png)
+        .expect("Error writing image");
 
-                    let mut headers = worker::Headers::new();
-                    let _ = headers.set("Access-Control-Allow-Headers", "Content-Type");
-                    let _ = headers.set("Content-Type", &image_transform_format_header);
-                    let _ = headers.set("Cache-Control", "max-age=2629746");
+    let mut headers = worker::Headers::new();
+    let _ = headers.set("Access-Control-Allow-Headers", "Content-Type");
+    let _ = headers.set("Content-Type", "image/png");
+    let _ = headers.set("Cache-Control", "max-age=2629746");
 
+    let body = ResponseBody::Body(new_image);
 
-    Ok(result)
+    // Implicit return (learn to love it)
+    Ok(Response::from_body(body).unwrap().with_headers(headers))
 }
