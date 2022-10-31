@@ -29,9 +29,10 @@ pub async fn main(req: Request, env: Env, _ctx: worker::Context) -> Result<Respo
     // functionality and a `RouteContext` which you can use to  and get route parameters and
     // Environment bindings like KV Stores, Durable Objects, Secrets, and Variables.
     router
-        .get("/worker-version", |_, ctx| {
-            let image = image::og_image(ctx);
-            Response::ok(image)
+        .get_async("/", |_, ctx| async {
+            let image = image::og_image(ctx).await?;
+
+            Ok(image)
         })
         .run(req, env)
         .await

@@ -1,95 +1,38 @@
 use resvg::render;
-use std::io;
-use std::io::BufRead;
 use std::io::Cursor;
-use std::sync::Arc;
-use std::time::Instant;
 use tiny_skia::{Pixmap, Transform};
-use usvg::{ImageHrefResolver, ImageKind, Options, Tree};
+use usvg::{Options, Tree};
 use worker::*;
 
 const WIDTH: u32 = 1200;
 const HEIGHT: u32 = 630;
 
-struct Tracer {
-    start: Instant,
-    latest: Instant,
-}
-
-impl Tracer {
-    pub fn new() -> Self {
-        let start = Instant::now();
-        Self {
-            latest: start,
-            start,
-        }
-    }
-
-    pub fn log(&mut self, event: &str) {
-        if cfg!(feature = "tracing") {
-            eprintln!(
-                "Event: {:<15} ({:>9.3?} since last, {:>9.3?} since start)",
-                event,
-                self.latest.elapsed(),
-                self.start.elapsed()
-            );
-            self.latest = Instant::now();
-        }
-    }
-}
-
-pub async fn og_image(ctx: RouteContext<()>) -> Result<Response> {
+pub async fn og_image(_ctx: RouteContext<()>) -> Result<Response> {
     // Read in the svg template we have
     let template = liquid::ParserBuilder::with_stdlib()
         .build()
         .unwrap()
-        .parse(include_str!("../assets/demo-text-with-image.svg"))
+        .parse_file("../assets/template.html")
         .unwrap();
-
-    let stdin = io::stdin();
-    let text = stdin.lock().lines().next().unwrap().unwrap();
-
-    let mut tracer = Tracer::new();
 
     // Create a new pixmap buffer to render to
     let mut pixmap = Pixmap::new(WIDTH, HEIGHT).ok_or("Pixmap allocation error")?;
 
     // Use default settings
-    let client = reqwest::Client::new();
-    
-    let mut options = Options {
-        image_href_resolver: ImageHrefResolver {
-            resolve_string: Box::new(move |path: &str, _| async move {
-                let response = client.get(path).send().await.unwrap();
-                let content_type = response
-                    .headers()
-                    .get("content-type")
-                    .and_then(|hv| hv.to_str().ok())?
-                    .to_owned();
-                let image_buffer = response.bytes().ok()?.into_iter().collect::<Vec<u8>>();
-                match content_type.as_str() {
-                    "image/png" => Some(ImageKind::PNG(Arc::new(image_buffer))),
-                    "image/jpg" => Some(ImageKind::JPEG(Arc::new(image_buffer))),
-                    "image/gif" => Some(ImageKind::GIF(Arc::new(image_buffer))),
-                    "image/svg+xml" => Tree::from_data(&image_buffer, &Options::default().to_ref())
-                        .ok()
-                        .map(ImageKind::SVG),
-                    _ => None,
-                }
-            }),
-            ..Default::default()
-        },
+    let _client = reqwest::Client::new();
+
+    let options = Options {
         ..Default::default()
     };
 
-    let globals = liquid::object!({ "text": text });
+    let globals = liquid::object!({ "text": "hello"});
 
-    let svg = template.render(&globals).unwrap();
+    let html = template.render(&globals).unwrap();
 
     // Build our string into a svg tree
-    let tree = match Tree::from_str(&svg, &options.to_ref()) {
+    let tree = match Tree::from_str(&html, &options.to_ref()) {
         Ok(t) => t,
-        Err(e) => return Ok(Response::error("Error creating tree", 400).unwrap()),
+        Err(e) => return Ok(Response::error(e.to_string(), 400).unwrap()),
     };
 
     render(
@@ -99,11 +42,12 @@ pub async fn og_image(ctx: RouteContext<()>) -> Result<Response> {
         pixmap.as_mut(),
     );
 
-    tracer.log("rendering");
+    let mut new_image = match pixmap.encode_png() {
+        Ok(img) => img,
+        _ => return Ok(Response::error("Error loading image from memory", 400).unwrap()),
+    };
 
-    let mut new_image = Vec::with_capacity(WIDTH as usize * HEIGHT as usize);
-
-    let image = match image::load_from_memory(&pixmap.data()) {
+    let image = match image::load_from_memory(&new_image) {
         Ok(value) => value,
         _ => return Ok(Response::error("Error loading image from memory", 400).unwrap()),
     };
