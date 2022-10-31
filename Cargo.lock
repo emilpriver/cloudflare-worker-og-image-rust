@@ -266,6 +266,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "cloudflare-worker-og-image-generator"
+version = "0.0.0"
+dependencies = [
+ "cfg-if 0.1.10",
+ "console_error_panic_hook",
+ "image",
+ "liquid",
+ "reqwest",
+ "resvg",
+ "serde_json",
+ "tiny-skia",
+ "usvg",
+ "worker",
+]
+
+[[package]]
 name = "codespan-reporting"
 version = "0.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2190,22 +2206,6 @@ name = "tinyvec_macros"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cda74da7e1a664f795bb1f8a87ec406fb89a02522cf6e50620d016add6dbbf5c"
-
-[[package]]
-name = "todo-worker"
-version = "0.0.0"
-dependencies = [
- "cfg-if 0.1.10",
- "console_error_panic_hook",
- "image",
- "liquid",
- "reqwest",
- "resvg",
- "serde_json",
- "tiny-skia",
- "usvg",
- "worker",
-]
 
 [[package]]
 name = "tokio"

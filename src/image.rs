@@ -9,11 +9,15 @@ const HEIGHT: u32 = 630;
 
 pub async fn og_image(_ctx: RouteContext<()>) -> Result<Response> {
     // Read in the svg template we have
-    let template = liquid::ParserBuilder::with_stdlib()
-        .build()
-        .unwrap()
-        .parse_file("../assets/template.html")
-        .unwrap();
+    let template = match liquid::ParserBuilder::with_stdlib().build() {
+        Ok(file) => file,
+        Err(e) => return Ok(Response::error(e.to_string(), 400).unwrap()),
+    };
+
+    let parsed_file = match template.parse_file(include_str!("../assets/demo-text-with-image.svg")) {
+        Ok(file) => file,
+        Err(e) => return Ok(Response::error(e.to_string(), 400).unwrap()),
+    };
 
     // Create a new pixmap buffer to render to
     let mut pixmap = Pixmap::new(WIDTH, HEIGHT).ok_or("Pixmap allocation error")?;
@@ -27,7 +31,7 @@ pub async fn og_image(_ctx: RouteContext<()>) -> Result<Response> {
 
     let globals = liquid::object!({ "text": "hello"});
 
-    let html = template.render(&globals).unwrap();
+    let html = parsed_file.render(&globals).unwrap();
 
     // Build our string into a svg tree
     let tree = match Tree::from_str(&html, &options.to_ref()) {
