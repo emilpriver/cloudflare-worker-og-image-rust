@@ -31,7 +31,10 @@ pub async fn og_image(_ctx: RouteContext<()>) -> Result<Response> {
 
     let globals = liquid::object!({ "text": "hello"});
 
-    let html = parsed_file.render(&globals).unwrap();
+    let html = match parsed_file.render(&globals) {
+        Ok(parse_file_html) => parse_file_html,
+        Err(e) => return Ok(Response::error(e.to_string(), 400).unwrap()),
+    };
 
     // Build our string into a svg tree
     let tree = match Tree::from_str(&html, &options.to_ref()) {
