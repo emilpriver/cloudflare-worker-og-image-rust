@@ -1,0 +1,43 @@
+<svg width="1200" height="630" viewBox="0 0 1200 630" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <pattern id="satori_pattern_id_1" x="0" y="0" width="0.08333333333333333" height="0.15873015873015872" patternUnits="objectBoundingBox">
+      <radialGradient id="satori_radial_id_1">
+        <stop offset="0" stop-color="lightgray"></stop>
+        <stop offset="0.02" stop-color="lightgray"></stop>
+        <stop offset="0" stop-color="transparent"></stop>
+        <stop offset="1" stop-color="transparent"></stop>
+      </radialGradient>
+      <mask id="satori_mask_id_1">
+        <rect x="0" y="0" width="100" height="100" fill="#fff"></rect>
+      </mask>
+      <circle cx="75" cy="75" width="100" height="100" r="106.06601717798213" fill="url(#satori_radial_id_1)" mask="url(#satori_mask_id_1)"></circle>
+    </pattern>
+    <pattern id="satori_pattern_id_0" x="0" y="0" width="0.08333333333333333" height="0.15873015873015872" patternUnits="objectBoundingBox">
+      <radialGradient id="satori_radial_id_0">
+        <stop offset="0" stop-color="lightgray"></stop>
+        <stop offset="0.02" stop-color="lightgray"></stop>
+        <stop offset="0" stop-color="transparent"></stop>
+        <stop offset="1" stop-color="transparent"></stop>
+      </radialGradient>
+      <mask id="satori_mask_id_0">
+        <rect x="0" y="0" width="100" height="100" fill="#fff"></rect>
+      </mask>
+      <circle cx="25" cy="25" width="100" height="100" r="106.06601717798213" fill="url(#satori_radial_id_0)" mask="url(#satori_mask_id_0)"></circle>
+    </pattern>
+  </defs>
+  <rect x="0" y="0" width="1200" height="630" fill="white"></rect>
+  <rect x="0" y="0" width="1200" height="630" fill="url(#satori_pattern_id_1)"></rect>
+  <rect x="0" y="0" width="1200" height="630" fill="url(#satori_pattern_id_0)"></rect>
+  <clipPath id="satori_cp-id-0-0">
+    <rect x="554" y="224" width="92" height="80"></rect>
+  </clipPath>
+  <mask id="satori_om-id-0-0">
+    <rect x="554" y="224" width="92" height="80" fill="#fff"></rect>
+  </mask>
+  <image x="554" y="224" width="92" height="80" href="data:image/svg+xml;utf8,%3Csvg fill=%22black%22
+		xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 75 65%22 width=%2275%22 height=%2265%22%3E%3Cpath d=%22M37.59.25l36.95 64H.64l36.95-64z%22%3E%3C/path%3E%3C/svg%3E" preserveAspectRatio="none" clip-path="url(#satori_cp-id-0-0)" mask="url(#satori_om-id-0-0)">
+  </image>
+  <text x="630" y="330" font-size="100px" fill="#000" font-family="Inter" >
+    {{ text }}
+  </text>
+</svg>

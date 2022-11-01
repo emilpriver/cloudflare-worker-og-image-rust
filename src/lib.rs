@@ -31,8 +31,15 @@ pub async fn main(req: Request, env: Env, _ctx: worker::Context) -> Result<Respo
     router
         .get_async("/", |_, ctx| async {
             let image = image::og_image(ctx).await?;
+            
+            let mut headers = worker::Headers::new();
+            let _ = headers.set("Access-Control-Allow-Headers", "Content-Type");
+            let _ = headers.set("Content-Type", "image/png");
+            let _ = headers.set("Cache-Control", "max-age=2629746");
 
-            Ok(image)
+            let body = ResponseBody::Body(image); 
+
+            Ok(Response::from_body(body).unwrap().with_headers(headers))
         })
         .run(req, env)
         .await
