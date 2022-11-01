@@ -1,4 +1,4 @@
-name = "" # todo
+name = "cloudflare-og-image-generator-rust" 
 main = "build/worker/shim.mjs"
 compatibility_date = "2022-01-20"
 

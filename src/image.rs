@@ -7,7 +7,7 @@ use worker::*;
 const WIDTH: u32 = 1200;
 const HEIGHT: u32 = 630;
 
-pub async fn og_image(req: Request)-> Result<Vec<u8>> {
+pub async fn og_image(req: Request) -> Result<Vec<u8>> {
     // Read in the svg template we have
     let template = match liquid::ParserBuilder::with_stdlib().build() {
         Ok(file) => file,
@@ -25,17 +25,21 @@ pub async fn og_image(req: Request)-> Result<Vec<u8>> {
     // Use default settings
     let _client = reqwest::Client::new();
 
-    let options = Options {
+    let mut options = Options {
         ..Default::default()
     };
 
+    options
+        .fontdb
+        .load_font_data(include_bytes!("../assets/SourceSansPro-Regular.ttf").to_vec());
+
     let parsed_url = match req.url() {
-        Ok(url) => url, 
+        Ok(url) => url,
         _ => return Err(Error::BindingError("Can't parse url".to_string())),
     };
 
     let mut text_query_value = None;
-     for (k, v) in parsed_url.query_pairs() {
+    for (k, v) in parsed_url.query_pairs() {
         if k == "text" {
             text_query_value = Some(v.to_string());
         }
@@ -43,9 +47,10 @@ pub async fn og_image(req: Request)-> Result<Vec<u8>> {
 
     // if we miss "text" query parameter, then return error
     if text_query_value == None {
-        return Err(Error::BindingError("Missing 'text' query parameter".to_string()))
+        return Err(Error::BindingError(
+            "Missing 'text' query parameter".to_string(),
+        ));
     }
-
 
     let globals = liquid::object!({ "text": text_query_value });
 
