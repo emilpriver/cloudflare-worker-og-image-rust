@@ -17,27 +17,27 @@ fn log_request(req: &Request) {
 pub async fn main(req: Request, env: Env, _ctx: worker::Context) -> Result<Response> {
     log_request(&req);
 
-    // Optionally, get more helpful error messages written to the console in the case of a panic.
     utils::set_panic_hook();
 
-    // Optionally, use the Router to handle matching endpoints, use ":name" placeholders, or "*name"
-    // catch-alls to match on specific patterns. Alternatively, use `Router::with_data(D)` to
-    // provide arbitrary data that will be accessible in each route via the `ctx.data()` method.
     let router = Router::new();
 
-    // Add as many routes as your Worker needs! Each route will get a `Request` for handling HTTP
-    // functionality and a `RouteContext` which you can use to  and get route parameters and
-    // Environment bindings like KV Stores, Durable Objects, Secrets, and Variables.
     router
-        .get_async("/", |_, ctx| async {
-            let image = image::og_image(ctx).await?;
-            
+        .get_async("/", |request, _ctx| async {
+            let image = match image::og_image(request).await {
+                Ok(img) => img,
+                Err(e) => {
+                    console_log!("{}", e);
+
+                    return Response::error("Error generating og image", 405);
+                }
+            };
+
             let mut headers = worker::Headers::new();
             let _ = headers.set("Access-Control-Allow-Headers", "Content-Type");
             let _ = headers.set("Content-Type", "image/png");
             let _ = headers.set("Cache-Control", "max-age=2629746");
 
-            let body = ResponseBody::Body(image); 
+            let body = ResponseBody::Body(image);
 
             Ok(Response::from_body(body).unwrap().with_headers(headers))
         })

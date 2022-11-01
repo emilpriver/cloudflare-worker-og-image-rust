@@ -1,5 +1,4 @@
 use resvg::render;
-use std::{Result};
 use std::io::Cursor;
 use tiny_skia::{Pixmap, Transform};
 use usvg::{Options, Tree};
@@ -8,16 +7,16 @@ use worker::*;
 const WIDTH: u32 = 1200;
 const HEIGHT: u32 = 630;
 
-pub async fn og_image(_ctx: RouteContext<()>) -> Result<Vec<u8>>{
+pub async fn og_image(req: Request)-> Result<Vec<u8>> {
     // Read in the svg template we have
     let template = match liquid::ParserBuilder::with_stdlib().build() {
         Ok(file) => file,
-        Err(e) => return Err(e.to_string()),
+        Err(e) => return Err(Error::BindingError(e.to_string())),
     };
 
     let parsed_file = match template.parse(include_str!("../assets/template.svg")) {
         Ok(file) => file,
-        Err(e) => return Error::Json(e.to_string()),
+        Err(e) => return Err(Error::BindingError(e.to_string())),
     };
 
     // Create a new pixmap buffer to render to
@@ -30,17 +29,35 @@ pub async fn og_image(_ctx: RouteContext<()>) -> Result<Vec<u8>>{
         ..Default::default()
     };
 
-    let globals = liquid::object!({ "text": "hello"});
+    let parsed_url = match req.url() {
+        Ok(url) => url, 
+        _ => return Err(Error::BindingError("Can't parse url".to_string())),
+    };
+
+    let mut text_query_value = None;
+     for (k, v) in parsed_url.query_pairs() {
+        if k == "text" {
+            text_query_value = Some(v.to_string());
+        }
+    }
+
+    // if we miss "text" query parameter, then return error
+    if text_query_value == None {
+        return Err(Error::BindingError("Missing 'text' query parameter".to_string()))
+    }
+
+
+    let globals = liquid::object!({ "text": text_query_value });
 
     let html = match parsed_file.render(&globals) {
         Ok(parse_file_html) => parse_file_html,
-        Err(e) => return Ok(Response::error(e.to_string(), 400).unwrap()),
+        Err(e) => return Err(Error::BindingError(e.to_string())),
     };
 
     // Build our string into a svg tree
     let tree = match Tree::from_str(&html, &options.to_ref()) {
         Ok(t) => t,
-        Err(e) => return Ok(Response::error(e.to_string(), 400).unwrap()),
+        Err(e) => return Err(Error::BindingError(e.to_string())),
     };
 
     render(
@@ -52,12 +69,12 @@ pub async fn og_image(_ctx: RouteContext<()>) -> Result<Vec<u8>>{
 
     let mut new_image = match pixmap.encode_png() {
         Ok(img) => img,
-        _ => return Ok(Response::error("Error loading image from memory", 400)),
+        Err(e) => return Err(Error::BindingError(e.to_string())),
     };
 
     let image = match image::load_from_memory(&new_image) {
         Ok(value) => value,
-        _ => return Ok(Response::error("Error loading image from memory", 400)),
+        Err(e) => return Err(Error::BindingError(e.to_string())),
     };
 
     image
