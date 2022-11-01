@@ -34,7 +34,7 @@ pub async fn main(req: Request, env: Env, _ctx: worker::Context) -> Result<Respo
 
             let mut headers = worker::Headers::new();
             let _ = headers.set("Access-Control-Allow-Headers", "Content-Type");
-            let _ = headers.set("Content-Type", "image/png");
+            let _ = headers.set("Content-Type", "image/jpeg");
             let _ = headers.set("Cache-Control", "max-age=2629746");
 
             let body = ResponseBody::Body(image);

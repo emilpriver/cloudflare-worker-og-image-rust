@@ -78,7 +78,7 @@ pub async fn og_image(req: Request)-> Result<Vec<u8>> {
     };
 
     image
-        .write_to(&mut Cursor::new(&mut new_image), image::ImageFormat::Png)
+        .write_to(&mut Cursor::new(&mut new_image), image::ImageFormat::Jpeg)
         .expect("Error writing image");
 
     Ok(new_image)
