@@ -2,14 +2,15 @@ use resvg::render;
 use std::io::Cursor;
 use tiny_skia::{Pixmap, Transform};
 use usvg::{Options, Tree};
-use worker::*;
+use worker::{Request, Result, Error};
+use liquid::ParserBuilder;
 
 const WIDTH: u32 = 1200;
 const HEIGHT: u32 = 630;
 
 pub async fn og_image(req: Request) -> Result<Vec<u8>> {
     // Read in the svg template we have
-    let template = match liquid::ParserBuilder::with_stdlib().build() {
+    let template = match ParserBuilder::with_stdlib().build() {
         Ok(file) => file,
         Err(e) => return Err(Error::BindingError(e.to_string())),
     };
