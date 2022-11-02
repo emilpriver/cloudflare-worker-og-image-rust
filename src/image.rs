@@ -31,7 +31,7 @@ pub async fn og_image(req: Request) -> Result<Vec<u8>> {
 
     options
         .fontdb
-        .load_font_data(include_bytes!("../assets/SourceSansPro-Regular.ttf").to_vec());
+        .load_font_data(include_bytes!("../assets/OpenSans-VariableFont_wdth,wght.ttf").to_vec());
 
     let parsed_url = match req.url() {
         Ok(url) => url,
